@@ -14,13 +14,21 @@
 #endregion
 using System;
 using System.Linq;
-
 using Topshelf;
+using Topshelf.HostConfigurators;
+using Topshelf.Runtime.Windows;
 
 namespace Topshelf.Runtime.Linux
 {
 	public class LinuxHostEnvironment : HostEnvironment
 	{
+		private readonly HostConfigurator configurator;
+
+		public LinuxHostEnvironment(HostConfigurator configurator)
+		{
+			this.configurator = configurator;
+		}
+
 		public string CommandLine {
 			get
 			{
@@ -30,12 +38,12 @@ namespace Topshelf.Runtime.Linux
 
 		public bool IsAdministrator { get { return MonoHelper.RunningAsRoot; } }
 
-		public bool IsRunningAsAService { get { return false; } }
+		public bool IsRunningAsAService { get { return MonoHelper.RunningUnderMonoService; } }
 
 		public bool IsServiceInstalled(string serviceName)
 		{
 			// This allows (at least) running service from command line as console.
-			return false;
+			return MonoHelper.RunningUnderMonoService;
 		}
 
 		public bool IsServiceStopped(string serviceName)
@@ -43,24 +51,14 @@ namespace Topshelf.Runtime.Linux
 			throw new NotImplementedException();
 		}
 
-		public void StartService(string serviceName)
+		public void StartService(string serviceName, TimeSpan startTimeOut)
 		{
 			throw new NotImplementedException();
 		}
 
-		public void StartService(string serviceName, TimeSpan startTimeOut)
-		{
-				throw new NotImplementedException();
-		}
-
-		public void StopService(string serviceName)
-		{
-				throw new NotImplementedException();
-		}
-
 		public void StopService(string serviceName, TimeSpan stopTimeOut)
 		{
-				throw new NotImplementedException();
+			throw new NotImplementedException();
 		}
 
 		public void InstallService(InstallHostSettings settings, Action beforeInstall, Action afterInstall, Action beforeRollback, Action afterRollback)
@@ -81,8 +79,15 @@ namespace Topshelf.Runtime.Linux
 
 		public Host CreateServiceHost(HostSettings settings, ServiceHandle serviceHandle)
 		{
-			// TODO: Implement a service host which execs mono-service under the hood.
-			throw new NotImplementedException();
+			if (MonoHelper.RunningUnderMonoService)
+			{
+				return new WindowsServiceHost(this, settings, serviceHandle, configurator);
+			}
+			else
+			{
+				// TODO: Implement a service host which execs mono-service under the hood.
+				throw new NotImplementedException();
+			}
 		}
 
 		public void SendServiceCommand(string serviceName, int command)
